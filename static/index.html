@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101918">
+  <title>Система биометрической аутентификации для контроля доступа на режимный объект с использованием распознавания лица</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .admin-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .admin-summary > div:nth-child(3) { border-right: 0; }
+    @media (max-width: 800px) { .admin-summary { grid-template-columns: 1fr 1fr; } }
+    dialog { width: min(600px, calc(100% - 28px)); max-height: 94vh; overflow-y: auto; }
+    .enroll-camera { height: 230px; }
+    #enroll-camera-placeholder { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .clearance-select { min-width: 138px; padding: 7px 8px; font-size: 10px; }
+    .row-actions { display: flex; align-items: center; gap: 10px; }
+    .event-record { color: #a9d8bc; }
+    @media (max-width: 500px) { .enroll-camera { height: 185px; } dialog { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="На экран прохода"><span class="brand-mark">К</span><span>КПП <small>БИОМЕТРИЧЕСКИЙ ПОСТ</small></span></a>
+    <div class="top-meta"><span class="status-dot"></span><span>ЛОКАЛЬНЫЙ КОНТУР</span><time id="clock"></time></div>
+    <nav class="tabs" aria-label="Разделы"><button class="tab active" data-view="terminal">Проход</button><button class="tab" data-view="admin">Сотрудники и журнал</button></nav>
+  </header>
+
+  <main>
+    <section class="view terminal-view" id="terminal-view">
+      <div class="section-heading"><div><p class="eyebrow">ПОСТ № 01 · СЕКТОР «ГЛАВНЫЙ ВХОД»</p><h1>Идентификация сотрудника</h1></div><div class="zone-control"><label for="zone">Уровень зоны</label><select id="zone"><option value="1">1 · Общая</option><option value="2">2 · Ограниченная</option><option value="3">3 · Особая</option></select></div></div>
+      <div class="terminal-grid">
+        <section class="camera-panel">
+          <div class="camera-frame" id="camera-frame">
+            <video id="video" autoplay muted playsinline></video>
+            <div class="camera-shade"></div><div class="scan-guide"><span></span><span></span><span></span><span></span><i></i></div>
+            <div class="camera-top"><span><i class="live-dot"></i> КАМЕРА 01</span><span id="camera-state">ОЖИДАНИЕ</span></div>
+            <div class="camera-bottom"><span id="camera-help">Расположите лицо по центру кадра</span><span>HD · 30 FPS</span></div>
+            <div class="camera-placeholder" id="camera-placeholder"><span class="camera-icon">◉</span><strong>Камера не запущена</strong><span>Разрешите доступ к камере для начала работы</span></div>
+          </div>
+          <div class="camera-actions"><button class="button button-secondary" id="camera-toggle">Включить камеру</button><button class="button button-primary" id="scan" disabled><span class="button-icon">⌕</span> Проверить доступ</button></div>
+        </section>
+        <aside class="result-panel" id="result-panel">
+          <div class="result-head"><span class="result-icon" id="result-icon">···</span><span class="result-label" id="result-label">ГОТОВ К СКАНИРОВАНИЮ</span></div>
+          <div class="result-body" id="result-body"><h2>Ожидание сотрудника</h2><p>Посмотрите в камеру. Для проверки живого присутствия плавно опустите голову по запросу на экране.</p></div>
+          <div class="result-foot"><span>ПРОВЕРКА ДОСТУПА</span><span>● АКТИВНА</span></div>
+        </aside>
+      </div>
+      <div class="lower-band"><div class="lower-title"><span class="section-index">01</span><div><strong>Контроль прохода</strong><small>Результат последней проверки</small></div></div><div id="last-event" class="last-event">Нет событий в текущей сессии</div><div class="model-chip"><span class="status-dot"></span> ЛОКАЛЬНАЯ БАЗА · SQLite</div></div>
+    </section>
+
+    <section class="view admin-view hidden" id="admin-view">
+      <div class="section-heading"><div><p class="eyebrow">УПРАВЛЕНИЕ ПОСТОМ</p><h1>Сотрудники и журнал</h1></div><button class="button button-primary" id="add-employee"><span class="button-icon">＋</span> Зарегистрировать</button></div>
+      <div class="admin-summary"><div><span>СОТРУДНИКИ</span><strong id="staff-count">0</strong></div><div><span>СЕГОДНЯ · СОБЫТИЯ</span><strong id="event-count">0</strong></div><div><span>ПОСЛЕДНЕЕ СОБЫТИЕ</span><strong id="last-time">—</strong></div></div>
+      <div class="admin-columns"><section><div class="table-heading"><h2>Список сотрудников</h2><span id="staff-caption">0 записей</span></div><div class="table-wrap"><table><thead><tr><th>СОТРУДНИК</th><th>ТАБЕЛЬНЫЙ №</th><th>ДОПУСК</th><th>В БАЗЕ С</th><th></th></tr></thead><tbody id="staff-body"></tbody></table><div class="empty-state" id="staff-empty">Сотрудники ещё не зарегистрированы</div></div></section>
+      <section><div class="table-heading"><h2>Журнал событий</h2><button class="text-button" id="refresh-events">Обновить ↻</button></div><div class="table-wrap events-wrap"><table><thead><tr><th>ВРЕМЯ</th><th>СОТРУДНИК</th><th>СОБЫТИЕ</th></tr></thead><tbody id="events-body"></tbody></table><div class="empty-state" id="events-empty">Записей пока нет</div></div></section></div>
+    </section>
+  </main>
+
+  <dialog id="enroll-dialog"><form id="enroll-form"><div class="dialog-heading"><div><p class="eyebrow">НОВАЯ БИОМЕТРИЧЕСКАЯ ЗАПИСЬ</p><h2>Регистрация сотрудника</h2></div><button type="button" class="icon-button" id="dialog-close" aria-label="Закрыть">×</button></div><label>Фамилия и имя<input name="name" required minlength="2" maxlength="100" placeholder="Иван Иванов"></label><label>Табельный номер<input name="personnel_id" required maxlength="40" placeholder="Т-1042"></label><label>Уровень допуска<select name="clearance"><option value="1">1 · Общая зона</option><option value="2">2 · Ограниченная зона</option><option value="3">3 · Особая зона</option></select></label><div class="enroll-camera"><video id="enroll-video" autoplay muted playsinline></video><div id="enroll-camera-placeholder"><span>Камера выключена</span><button type="button" class="button button-secondary" id="enroll-camera-start">Включить камеру</button></div></div><p class="form-note">Смотрите прямо в камеру и сохраняйте неподвижность несколько секунд. Изображения не записываются.</p><p class="form-error" id="form-error"></p><div class="dialog-actions"><button type="button" class="button button-secondary" id="dialog-cancel">Отмена</button><button class="button button-primary" id="enroll-submit" disabled>Сохранить биометрию</button></div></form></dialog>
+  <script src="/static/app.js"></script>
+</body>
+</html>
